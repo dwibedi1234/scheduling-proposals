@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Remote P6 Scheduling Support for Velocity Scheduling Group — Debashrit Dwibedi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=Roboto+Condensed:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F7F4EC; --paper-line:#E4DFCF;
+    --ink:#1C2430; --ink-soft:#4B5563; --ink-faint:#8A8478;
+    --line:#2B3542; --steel:#2E5A82; --critical:#B4222E;
+    --grid:rgba(43,53,66,0.06);
+    --font-head:'Oswald',sans-serif; --font-body:'Source Serif 4',serif; --font-data:'Roboto Condensed',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:24px 24px;
+    color:var(--ink); font-family:var(--font-body); font-size:16px; line-height:1.62;
+    padding:36px 20px 70px;
+  }
+  .sheet{max-width:1000px;margin:0 auto;position:relative;border:1.5px solid var(--line);background:var(--paper);}
+  .sheet::before{content:'';position:absolute;inset:8px;border:1px solid var(--paper-line);pointer-events:none;}
+  .inner{padding:30px 34px 34px;position:relative;}
+  a{color:var(--steel);text-decoration:none;border-bottom:1px solid rgba(46,90,130,.4);}
+  a:hover{border-bottom-color:var(--steel);}
+
+  .stamp{position:absolute;top:22px;right:30px;border:2.5px solid var(--critical);color:var(--critical);
+    font-family:var(--font-head);font-weight:600;font-size:12.5px;letter-spacing:.09em;padding:7px 12px;
+    transform:rotate(-6deg);text-align:center;line-height:1.35;background:rgba(180,34,46,.03);}
+  .stamp small{display:block;font-family:var(--font-data);font-weight:400;font-size:9.5px;letter-spacing:.05em;margin-top:2px;opacity:.85;}
+
+  /* title block */
+  .titleblock{border:1px solid var(--line);display:grid;grid-template-columns:1.7fr 1.1fr;margin-top:6px;}
+  .name-cell{padding:26px 30px;border-right:1px solid var(--line);}
+  .kicker{font-family:var(--font-data);font-size:11px;letter-spacing:.14em;color:var(--ink-faint);margin-bottom:14px;text-transform:uppercase;}
+  h1{font-family:var(--font-head);font-weight:600;font-size:clamp(26px,3.8vw,40px);letter-spacing:.01em;text-transform:uppercase;line-height:1.1;}
+  .role-line{margin-top:10px;font-family:var(--font-head);font-size:15px;color:var(--steel);letter-spacing:.02em;text-transform:uppercase;}
+  .role-sub{margin-top:5px;font-size:14px;color:var(--ink-soft);font-style:italic;}
+  .tb-grid{display:grid;grid-template-columns:1fr 1fr;}
+  .tb-cell{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:9px 14px;}
+  .tb-cell:nth-child(2n){border-right:none;}
+  .tb-cell.wide{grid-column:1/-1;border-right:none;}
+  .tb-cell:last-child{border-bottom:none;}
+  .tb-cell .k{font-family:var(--font-data);font-size:9.5px;letter-spacing:.09em;color:var(--ink-faint);text-transform:uppercase;}
+  .tb-cell .v{font-family:var(--font-data);font-size:13px;margin-top:3px;}
+
+  /* sections */
+  .section{margin-top:44px;}
+  .sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:18px;border-bottom:2px solid var(--line);padding-bottom:8px;}
+  .sec-num{font-family:var(--font-data);font-size:12px;color:var(--paper);background:var(--ink);padding:2px 7px;}
+  .sec-title{font-family:var(--font-head);font-weight:500;font-size:19px;letter-spacing:.03em;text-transform:uppercase;}
+  .lead{font-size:17px;color:var(--ink);max-width:68ch;line-height:1.7;}
+  .lead + .lead{margin-top:12px;color:var(--ink-soft);font-size:16px;}
+
+  /* scope table */
+  table{border-collapse:collapse;width:100%;}
+  .scope{border:1px solid var(--line);}
+  .scope th{background:var(--ink);color:var(--paper);font-family:var(--font-data);font-weight:400;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;text-align:left;padding:8px 12px;}
+  .scope td{border-top:1px solid var(--paper-line);padding:12px;vertical-align:top;font-size:14.5px;color:var(--ink-soft);}
+  .scope td.id{font-family:var(--font-data);font-size:12px;color:var(--ink-faint);white-space:nowrap;width:64px;}
+  .scope td.what{font-family:var(--font-head);font-size:14px;color:var(--ink);text-transform:uppercase;letter-spacing:.01em;width:34%;}
+  .scope tr:nth-child(even) td{background:rgba(43,53,66,.025);}
+  .scope .out{font-family:var(--font-data);font-size:12.5px;color:var(--steel);display:block;margin-top:5px;}
+
+  /* time strip */
+  .tz{border:1px solid var(--line);padding:22px 24px;}
+  .tz-hours{display:flex;justify-content:space-between;font-family:var(--font-data);font-size:10.5px;color:var(--ink-faint);margin-bottom:4px;}
+  .tz-row{position:relative;height:30px;border-top:1px dashed var(--paper-line);}
+  .tz-lab{font-family:var(--font-data);font-size:11.5px;color:var(--ink-soft);margin:12px 0 4px;}
+  .tz-bar{position:absolute;top:7px;height:16px;}
+  .tz-bar.me{background:var(--steel);}
+  .tz-bar.biz{border:1.5px solid var(--ink);background:rgba(28,36,48,.06);}
+  .tz-bar.call{background:var(--critical);}
+  .tz-line{display:grid;grid-template-columns:104px 1fr;align-items:center;}
+  .tz-zone{font-family:var(--font-data);font-size:11.5px;color:var(--ink-soft);}
+  .tz-line .tz-row{border-top:1px dashed var(--paper-line);}
+  .tz-note{margin-top:16px;font-size:14px;color:var(--ink-soft);}
+  .tz-key{display:flex;gap:20px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-data);font-size:11.5px;color:var(--ink-soft);}
+  .tz-key i{display:inline-block;width:14px;height:9px;margin-right:6px;vertical-align:middle;}
+
+  /* steps */
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);}
+  .step{padding:18px 18px 20px;border-right:1px solid var(--line);}
+  .step:last-child{border-right:none;}
+  .step .n{font-family:var(--font-head);font-size:28px;color:var(--critical);line-height:1;}
+  .step b{display:block;font-family:var(--font-head);font-weight:500;font-size:14px;text-transform:uppercase;margin:8px 0 5px;}
+  .step p{font-size:13.5px;color:var(--ink-soft);line-height:1.55;}
+
+  /* projects */
+  .proj{width:100%;border:1px solid var(--line);}
+  .proj th{background:var(--ink);color:var(--paper);font-family:var(--font-data);font-weight:400;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;text-align:left;padding:8px 12px;}
+  .proj td{border-top:1px solid var(--paper-line);padding:11px 12px;font-size:14px;color:var(--ink-soft);vertical-align:top;}
+  .proj td.pn{font-family:var(--font-head);font-size:13.5px;color:var(--ink);text-transform:uppercase;}
+  .proj td.val{font-family:var(--font-data);font-weight:700;color:var(--critical);white-space:nowrap;}
+  .fine{margin-top:10px;font-family:var(--font-data);font-size:11.5px;color:var(--ink-faint);}
+
+  /* credentials */
+  .cred-grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);}
+  .cred{padding:14px 18px;border-top:1px solid var(--paper-line);border-right:1px solid var(--paper-line);}
+  .cred:nth-child(-n+2){border-top:none;}
+  .cred:nth-child(2n){border-right:none;}
+  .cred b{display:block;font-family:var(--font-head);font-weight:500;font-size:13.5px;text-transform:uppercase;}
+  .cred span{font-size:13.5px;color:var(--ink-soft);}
+  .tools{margin-top:14px;font-family:var(--font-data);font-size:13px;color:var(--ink-soft);}
+  .tools b{color:var(--ink);}
+
+  /* CTA */
+  .cta{margin-top:44px;border:2px solid var(--line);padding:26px 30px;display:grid;grid-template-columns:1.5fr 1fr;gap:26px;align-items:center;}
+  .cta h2{font-family:var(--font-head);font-weight:500;font-size:22px;text-transform:uppercase;letter-spacing:.02em;margin-bottom:8px;}
+  .cta p{font-size:15px;color:var(--ink-soft);}
+  .btn{display:block;text-align:center;background:var(--ink);color:var(--paper);font-family:var(--font-head);text-transform:uppercase;letter-spacing:.08em;font-size:14px;padding:14px 18px;border:none;}
+  .btn:hover{background:var(--critical);border:none;}
+  .cta .links{margin-top:12px;font-family:var(--font-data);font-size:13px;line-height:1.9;text-align:center;}
+
+  .footbar{margin-top:30px;padding-top:14px;border-top:1px solid var(--paper-line);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-family:var(--font-data);font-size:10.5px;color:var(--ink-faint);letter-spacing:.03em;}
+
+  @media(max-width:760px){
+    .titleblock,.cta{grid-template-columns:1fr;}
+    .steps{grid-template-columns:1fr 1fr;} .step:nth-child(2){border-right:none;} .step:nth-child(-n+2){border-bottom:1px solid var(--line);}
+    .cred-grid{grid-template-columns:1fr;} .cred{border-right:none;} .cred:nth-child(2){border-top:1px solid var(--paper-line);}
+    .scope td.what{width:auto;}
+    .stamp{position:static;display:inline-block;margin-bottom:16px;transform:rotate(-3deg);}
+  }
+  @media print{body{background:#fff;padding:0;}.sheet{border:none;}}
+</style>
+</head>
+<body>
+<div class="sheet"><div class="inner">
+
+  <div class="stamp">PREPARED FOR VELOCITY SCHEDULING GROUP<small>PROPOSAL — REMOTE SCHEDULING SUPPORT</small></div>
+
+  <div class="titleblock">
+    <div class="name-cell">
+      <div class="kicker">Portfolio &amp; capability sheet</div>
+      <h1>Debashrit Dwibedi</h1>
+      <div class="role-line">Civil Planning Engineer · Primavera P6 Scheduler</div>
+      <div class="role-sub">Remote scheduling support, freelance or subcontract — from India</div>
+    </div>
+    <div class="tb-grid">
+      <div class="tb-cell"><div class="k">Prepared for</div><div class="v">Velocity Scheduling Group</div></div>
+      <div class="tb-cell"><div class="k">Location</div><div class="v">USA</div></div>
+      <div class="tb-cell"><div class="k">Drawing No.</div><div class="v">VSG&nbsp;/&nbsp;DD&nbsp;/&nbsp;01</div></div>
+      <div class="tb-cell"><div class="k">Date</div><div class="v">Oct 2026</div></div>
+      <div class="tb-cell wide"><div class="k">Contact</div><div class="v">d.dwibedi1994@gmail.com</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head"><span class="sec-num">01</span><span class="sec-title">Proposal in brief</span></div>
+    <p class="lead">Scheduling work rarely arrives evenly — a new baseline, a month-end update cycle and a recovery schedule can all land in the same week. I offer flexible, project-based Primavera P6 support from India: an extra scheduler who works to your team’s standards, on a freelance or subcontract basis.</p>
+    <p class="lead">This sheet sets out what I can take off your desk, how the working day fits between the US and India, and a low-risk way to start: one small assignment, so you can judge the work before committing to anything longer.</p>
+  </div>
+
+  <div class="section">
+    <div class="sec-head"><span class="sec-num">02</span><span class="sec-title">Scope of support</span></div>
+    <table class="scope">
+      <thead><tr><th>Ref.</th><th>Service</th><th>What you receive</th></tr></thead>
+      <tbody>
+        <tr><td class="id">S-01</td><td class="what">Baseline construction schedules</td><td>A complete baseline built in Primavera P6 from your drawings, scope and milestones.<span class="out">Output: P6 file (.xer) + PDF bar chart</span></td></tr>
+        <tr><td class="id">S-02</td><td class="what">WBS, sequencing &amp; critical path</td><td>WBS structure, activity logic and relationships, with the critical path analysed and explained in plain terms.<span class="out">Output: logic review + critical path summary</span></td></tr>
+        <tr><td class="id">S-03</td><td class="what">Weekly &amp; monthly updates: S-Curves, SPI &amp; CPI tracking</td><td>Schedules updated against actual site progress on your cycle, with data date and progress clearly recorded.<span class="out">Output: updated schedule each cycle + P6 file (.xml)</span></td></tr>
+        <tr><td class="id">S-04</td><td class="what">Reports, look-aheads &amp; variance</td><td>Progress reports, short-interval look-ahead schedules and planned-vs-actual variance analysis for your team and client.<span class="out">Output: progress report, look-aheads, variance sheet</span></td></tr>
+        <tr><td class="id">S-05</td><td class="what">Delay tracking &amp; recovery</td><td>Delay logs and hindrance registers kept as the job runs, and recovery schedules prepared when the programme slips.<span class="out">Output: hindrance register + recovery schedule</span></td></tr>
+        <tr><td class="id">S-06</td><td class="what">Team coordination</td><td>Regular contact with project managers and site teams so the schedule reflects what is actually happening on site.<span class="out">Output: updated inputs, flagged risks</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="sec-head"><span class="sec-num">03</span><span class="sec-title">Working across time zones</span></div>
+    <div class="tz">
+      <div class="tz-line"><div class="tz-zone"></div><div class="tz-hours"><span>12 am</span><span>3 am</span><span>6 am</span><span>9 am</span><span>12 pm</span><span>3 pm</span><span>6 pm</span><span>9 pm</span><span>12 am</span></div></div>
+      <div class="tz-line"><div class="tz-zone">Eastern (ET)</div><div class="tz-row"><div class="tz-bar biz" style="left:37.5%;width:33.3%;"></div><div class="tz-bar me" style="left:0%;width:35.4%;"></div><div class="tz-bar me" style="left:97.9%;width:2.1%;"></div><div class="tz-bar call" style="left:41.7%;width:8.3%;"></div></div></div>
+      <div class="tz-line"><div class="tz-zone">Central (CT)</div><div class="tz-row"><div class="tz-bar biz" style="left:37.5%;width:33.3%;"></div><div class="tz-bar me" style="left:0%;width:31.25%;"></div><div class="tz-bar me" style="left:93.75%;width:6.25%;"></div><div class="tz-bar call" style="left:37.5%;width:8.3%;"></div></div></div>
+      <div class="tz-line"><div class="tz-zone">Mountain (MT)</div><div class="tz-row"><div class="tz-bar biz" style="left:37.5%;width:33.3%;"></div><div class="tz-bar me" style="left:0%;width:27.1%;"></div><div class="tz-bar me" style="left:89.6%;width:10.4%;"></div><div class="tz-bar call" style="left:33.3%;width:8.3%;"></div></div></div>
+      <div class="tz-line"><div class="tz-zone">Pacific (PT)</div><div class="tz-row"><div class="tz-bar biz" style="left:37.5%;width:33.3%;"></div><div class="tz-bar me" style="left:0%;width:22.9%;"></div><div class="tz-bar me" style="left:85.4%;width:14.6%;"></div><div class="tz-bar call" style="left:29.2%;width:8.3%;"></div></div></div>
+      <div class="tz-key">
+        <span><i style="border:1.5px solid var(--ink);background:rgba(28,36,48,.06);"></i>9 am – 5 pm, your local time</span>
+        <span><i style="background:var(--steel);"></i>My hands-on scheduling time</span>
+        <span><i style="background:var(--critical);"></i>Live calls, 7:30–9:30 pm IST</span>
+      </div>
+      <p class="tz-note">India is roughly 9.5–13.5 hours ahead of the US mainland, depending on zone and daylight saving. Send site progress at the end of your day and the updated schedule is waiting when you start the next one. Live calls fit your morning, which is evening in India: 7:30–9:30 pm IST is 10 am–12 pm Eastern or 7–9 am Pacific (shown for daylight time; an hour earlier in US local time from 1 November).</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head"><span class="sec-num">04</span><span class="sec-title">How we would start</span></div>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><b>Short call</b><p>Understand your project, software setup and reporting needs.</p></div>
+      <div class="step"><div class="n">2</div><b>Small trial</b><p>One defined assignment — a baseline, an update or a look-ahead — to evaluate my work.</p></div>
+      <div class="step"><div class="n">3</div><b>Review</b><p>You assess quality, turnaround and communication, with no long-term commitment.</p></div>
+      <div class="step"><div class="n">4</div><b>Scale as needed</b><p>Move to ongoing project-based support only when it makes sense for your team.</p></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head"><span class="sec-num">05</span><span class="sec-title">Project experience</span></div>
+    <table class="proj">
+      <thead><tr><th>Project</th><th>Role</th><th>Organisation</th><th style="text-align:right;">Value</th></tr></thead>
+      <tbody>
+        <tr><td class="pn">STT Palava: Data Center 04, 05, 06 — Design &amp; Build of CSA and Base-Build MEP, Dombivli, Mumbai</td><td>Baseline scheduling &amp; project controls</td><td>URC Construction</td><td class="val" style="text-align:right;">₹1,278 Cr</td></tr>
+        <tr><td class="pn">Hyperscale Data Center — Project Crossbow, Vizag</td><td>Baseline scheduling &amp; project controls</td><td>URC Construction</td><td class="val" style="text-align:right;">₹850 Cr</td></tr>
+        <tr><td class="pn">6,992-Bed Hostel (WWH), IDCO</td><td>Baseline scheduling &amp; controls</td><td>URC Construction</td><td class="val" style="text-align:right;">₹329 Cr</td></tr>
+        <tr><td class="pn">Cuttack Railway Station Upgradation</td><td>Baseline scheduling &amp; controls</td><td>URC Construction</td><td class="val" style="text-align:right;">₹295 Cr</td></tr>
+        <tr><td class="pn">33-Storey Residential Tower (2B+S+33)</td><td>P6 scheduling, subcontractor claim audit</td><td>Z Estates</td><td class="val" style="text-align:right;">₹355 Cr</td></tr>
+        <tr><td class="pn">Dharamshalas, Puri</td><td>P6 scheduling, look-aheads, EOT documentation</td><td>Shreejikrupa Project</td><td class="val" style="text-align:right;">₹150 Cr</td></tr>
+        <tr><td class="pn">Duplex Villas (91 units) &amp; B+S+5 block</td><td>P6 scheduling, progress monitoring</td><td>Z Estates</td><td class="val" style="text-align:right;">₹82 Cr · ₹21 Cr</td></tr>
+      </tbody>
+    </table>
+    <p class="fine">Values in Indian rupees (1 Cr = 10 million). Shown as a record of project scale, not a claim of sole project delivery.</p>
+  </div>
+
+  <div class="section">
+    <div class="sec-head"><span class="sec-num">06</span><span class="sec-title">Credentials &amp; tools</span></div>
+    <div class="cred-grid">
+      <div class="cred"><b>Chartered Engineer (CEng)</b><span>Institution of Engineers (India), 2020</span></div>
+      <div class="cred"><b>Primavera P6 Professional PM — Grade A+</b><span>Wiznic World, 2025</span></div>
+      <div class="cred"><b>B.Tech, Civil Engineering</b><span>GITAM, Bhubaneswar, 2018</span></div>
+      <div class="cred"><b>BIM 4D / 5D / 6D Planning</b><span>NOVATR, in progress, 2026</span></div>
+    </div>
+    <p class="tools"><b>Tools:</b> Primavera P6 (PPM &amp; EPPM) · Revit · AutoCAD · MS Excel &amp; Office &nbsp;|&nbsp; <b>Also:</b> EOT claim preparation, S-curves, SPI / CPI tracking, DPR / WPR / MPR reporting</p>
+  </div>
+
+  <div class="cta">
+    <div>
+      <h2>Let's start with one small assignment</h2>
+      <p>If Velocity Scheduling Group needs extra Primavera P6 capacity on a current or upcoming project, I would welcome a short conversation about how I can support your team.</p>
+    </div>
+    <div>
+      <a class="btn" href="mailto:d.dwibedi1994@gmail.com?subject=Remote%20P6%20Scheduling%20Support%20%E2%80%94%20Velocity%20Scheduling%20Group">Email Debashrit</a>
+      <div class="links">d.dwibedi1994@gmail.com<br><a href="https://linkedin.com/in/debashrit-dwibedi-3b738b168" target="_blank" rel="noopener">linkedin.com/in/debashrit-dwibedi</a></div>
+    </div>
+  </div>
+
+  <div class="footbar">
+    <span>PREPARED FOR VELOCITY SCHEDULING GROUP — USA</span>
+    <span>DRAWN — D. DWIBEDI &nbsp;|&nbsp; SHEET 1 OF 1 &nbsp;|&nbsp; OCT 2026</span>
+  </div>
+
+</div></div>
+</body>
+</html>
